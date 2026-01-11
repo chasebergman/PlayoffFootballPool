@@ -21,10 +21,24 @@ ROSTERS = {
 
 # Manual Position overrides to ensure QB/RB/WR/TE logic is ironclad
 POS_MAP = {
-    "Josh Allen": "QB", "Jalen Hurts": "QB", "Brock Purdy": "QB", "Drake Maye": "QB", "Bo Nix": "QB", 
-    "Jordan Love": "QB", "CJ Stroud": "QB", "Matthew Stafford": "QB", "Justin Herbert": "QB",
-    "Trevor Lawrence": "QB", "Sam Darnold": "QB", "Caleb Williams": "QB",
-    "Kyle Monangai": "RB", "Josh Jacobs": "RB", "Saquon Barkley": "RB", "Christian McCaffrey": "RB"
+    "Puka Nacua": "WR", "Josh Jacobs": "RB", "Christian McCaffrey": "RB", "Brock Purdy": "QB", 
+    "George Kittle": "TE", "Trevor Lawrence": "QB", "Travis Etienne": "RB", "Parker Washington": "WR", 
+    "Brian Thomas Jr.": "WR", "Colby Parkinson": "TE", "Blake Corum": "RB", "Tetairoa McMillan": "WR", 
+    "Tyler Higbee": "TE", "Jaylen Warren": "RB", "Josh Allen": "QB", "A.J. Brown": "WR", 
+    "DeVonta Smith": "WR", "Dallas Goedert": "TE", "Dalton Kincaid": "TE", "Christian Watson": "WR", 
+    "Rhamondre Stevenson": "RB", "Jayden Reed": "WR", "Kenneth Gainwell": "RB", "Kenneth Walker III": "RB", 
+    "DK Metcalf": "WR", "Jordan Love": "QB", "Kayshon Boutte": "WR", "Justin Herbert": "QB",
+    "James Cook": "RB", "Saquon Barkley": "RB", "Jalen Hurts": "QB", "Khalil Shakir": "WR", 
+    "Caleb Williams": "QB", "DJ Moore": "WR", "Omarion Hampton": "RB", "Ladd McConkey": "WR", 
+    "Colston Loveland": "TE", "Dawson Knox": "TE", "Quentin Johnston": "WR", "Brandin Cooks": "WR", 
+    "Jahan Dotson": "WR", "Ty Johnson": "RB", "Jaxon Smith-Njigba": "WR", "Drake Maye": "QB", 
+    "Davante Adams": "WR", "Trayveon Henderson": "RB", "Rome Odunze": "WR", "D'Andre Swift": "RB", 
+    "Sam Darnold": "QB", "Zach Charbonnet": "RB", "Luther Burden III": "WR", "Juaun Jennings": "WR", 
+    "Cooper Kupp": "WR", "Jayden Higgins": "WR", "Kyle Monangai": "RB", "Rasheed Shaheed": "WR",
+    "Matthew Stafford": "QB", "Kyren Williams": "RB", "Nico Collins": "WR", "Stefon Diggs": "WR", 
+    "Courtland Sutton": "WR", "RJ Harvey": "RB", "Hunter Henry": "TE", "Bo Nix": "QB", 
+    "Dalton Schultz": "TE", "Woody Marks": "RB", "Troy Franklin": "WR", "Ricky Pearsall": "WR", 
+    "CJ Stroud": "QB", "Jakobi Meyers": "WR"
 }
 
 def clean_name(name):
