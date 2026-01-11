@@ -7,11 +7,9 @@ from datetime import datetime
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(page_title="2026 Playoff Pool: LIVE", page_icon="🏈", layout="wide")
-
-# 2. AUTO-REFRESH (Refreshes the script every 60 seconds)
 st_autorefresh(interval=60000, key="fpl_refresh")
 
-# 3. ROSTERS & POSITION MAPPING
+# 2. CONFIG & ROSTERS
 TEST_YEAR = 2025 
 ROSTERS = {
     "Chase": ["Puka Nacua", "Josh Jacobs", "Christian McCaffrey", "Brock Purdy", "George Kittle", "Trevor Lawrence", "Travis Etienne", "Parker Washington", "Brian Thomas Jr.", "Colby Parkinson", "Blake Corum", "Tetairoa McMillan", "Tyler Higbee", "Jaylen Warren"],
@@ -21,18 +19,17 @@ ROSTERS = {
     "Ty": ["Matthew Stafford", "Kyren Williams", "Nico Collins", "Stefon Diggs", "Courtland Sutton", "RJ Harvey", "Hunter Henry", "Bo Nix", "Dalton Schultz", "Woody Marks", "Troy Franklin", "Ricky Pearsall", "CJ Stroud", "Jakobi Meyers"]
 }
 
+# Manual Position overrides to ensure the Flex logic is perfect
 POS_MAP = {
-    "Kyle Monangai": "RB", "Josh Jacobs": "RB", "Saquon Barkley": "RB", 
-    "Christian McCaffrey": "RB", "James Cook": "RB", "Travis Etienne": "RB",
-    "Rhamondre Stevenson": "RB", "Kenneth Walker III": "RB", "D'Andre Swift": "RB",
-    "Kyren Williams": "RB", "Jaylen Warren": "RB", "Zach Charbonnet": "RB",
-    "Woody Marks": "RB", "RJ Harvey": "RB", "Omarion Hampton": "RB", "Blake Corum": "RB"
+    "Josh Allen": "QB", "Jalen Hurts": "QB", "Brock Purdy": "QB", "Drake Maye": "QB", "Bo Nix": "QB", 
+    "Jordan Love": "QB", "CJ Stroud": "QB", "Matthew Stafford": "QB", "Justin Herbert": "QB",
+    "Kyle Monangai": "RB", "Josh Jacobs": "RB", "Saquon Barkley": "RB", "Christian McCaffrey": "RB"
 }
 
 def clean_name(name):
     return re.sub(r'[^a-z]', '', str(name).lower()) if name else ""
 
-# 4. DATA FETCHING (Low TTL for live game updates)
+# 3. DATA FETCHING
 @st.cache_data(ttl=120) 
 def get_stats_for_week(year, week):
     url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={year}&seasontype=3&week={week}"
@@ -41,7 +38,6 @@ def get_stats_for_week(year, week):
         data = requests.get(url).json()
         for game in data.get('events', []):
             if game.get('status', {}).get('type', {}).get('name') == "STATUS_SCHEDULED": continue
-            
             res = requests.get(f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={game['id']}").json()
             for team in res.get('boxscore', {}).get('players', []):
                 for cat in team.get('statistics', []):
@@ -53,6 +49,7 @@ def get_stats_for_week(year, week):
                             p_pos = athlete['athlete'].get('position', {}).get('abbreviation', "WR")
                             player_stats[p_name] = {'Player': p_name, 'Pos': p_pos, 'pts': 0.0, 'clean': clean_name(p_name)}
                         
+                        # Scoring Logic
                         if cat_name == 'passing':
                             player_stats[p_name]['pts'] += (float(s.get('passingYards', 0)) * 0.04) + (float(s.get('passingTouchdowns', 0)) * 4) - (float(s.get('interceptions', 0)) * 2)
                         elif cat_name == 'rushing':
@@ -64,9 +61,9 @@ def get_stats_for_week(year, week):
     except: pass
     return pd.DataFrame(list(player_stats.values()))
 
-# 5. CALCULATION & UI RENDER
+# 4. BEST BALL ENGINE (1 QB, 1 RB, 2 WR, 2 FLEX NO QB)
 st.title("🏈 2026 Playoff Pool Tracker")
-st.markdown(f"**Last Sync:** {datetime.now().strftime('%I:%M:%S %p')} | Refresh: Every 60s")
+st.markdown(f"**Last Sync:** {datetime.now().strftime('%I:%M:%S %p')}")
 
 cumulative_scores = {name: 0 for name in ROSTERS}
 team_history = {name: [] for name in ROSTERS}
@@ -77,40 +74,40 @@ for w in range(1, 5):
     
     for owner, roster in ROSTERS.items():
         owner_df = pd.DataFrame({'Player': roster, 'clean': [clean_name(p) for p in roster]})
-        available = pd.merge(owner_df, week_stats[['clean', 'pts', 'Pos']], on='clean', how='left').fillna(0)
-        available['Pos'] = available['Player'].map(POS_MAP).fillna(available['Pos'])
-        available = available.sort_values('pts', ascending=False)
+        pool = pd.merge(owner_df, week_stats[['clean', 'pts', 'Pos']], on='clean', how='left').fillna(0)
+        pool['Pos'] = pool['Player'].map(POS_MAP).fillna(pool['Pos'])
+        pool = pool.sort_values('pts', ascending=False)
         
         starters, used_idx = [], []
-        for pos in ['QB', 'RB']:
-            m = available[(available['Pos'] == pos) & (~available.index.isin(used_idx))]
-            if not m.empty: starters.append((pos, m.iloc[0])); used_idx.append(m.index[0])
-        
-        wr_pool = available[(available['Pos'] == 'WR') & (~available.index.isin(used_idx))]
-        for i in range(min(2, len(wr_pool))):
-            starters.append(("WR", wr_pool.iloc[i])); used_idx.append(wr_pool.index[i])
+
+        # 1. Fill Mandatory Slots
+        for pos, count in [('QB', 1), ('RB', 1), ('WR', 2)]:
+            matched = pool[(pool['Pos'] == pos) & (~pool.index.isin(used_idx))].head(count)
+            for _, row in matched.iterrows():
+                starters.append({"Slot": pos, "Player": row['Player'], "Pts": row['pts']})
+                used_idx.append(row.name)
+
+        # 2. Fill FLEX (RB/WR/TE ONLY - No QB)
+        flex_eligible = pool[(pool['Pos'].isin(['RB', 'WR', 'TE'])) & (~pool.index.isin(used_idx))].head(2)
+        for _, row in flex_eligible.iterrows():
+            starters.append({"Slot": "FLEX", "Player": row['Player'], "Pts": row['pts']})
+            used_idx.append(row.name)
             
-        flex_pool = available[(~available.index.isin(used_idx)) & (available['Pos'].isin(['RB', 'WR', 'TE']))]
-        for i in range(min(2, len(flex_pool))):
-            starters.append(("FLEX", flex_pool.iloc[i])); used_idx.append(flex_pool.index[i])
-            
-        week_pts = sum(row['pts'] for slot, row in starters)
+        week_pts = sum(s['Pts'] for s in starters)
         cumulative_scores[owner] += week_pts
         team_history[owner].append({"week": w, "pts": week_pts, "starters": starters})
 
-# Display Standings
-st.divider()
-lb_df = pd.DataFrame([{"Owner": k, "Total Score": round(v, 2)} for k, v in cumulative_scores.items()]).sort_values("Total Score", ascending=False)
+# 5. UI RENDER
+lb_df = pd.DataFrame([{"Owner": k, "Total": round(v, 2)} for k, v in cumulative_scores.items()]).sort_values("Total", ascending=False)
 st.subheader("🏆 Leaderboard")
 st.table(lb_df)
 
-# Display Individual Team Tabs
 st.divider()
 tabs = st.tabs(list(ROSTERS.keys()))
 for i, (owner, history) in enumerate(team_history.items()):
     with tabs[i]:
-        st.metric("Total Playoff Points", round(cumulative_scores[owner], 1))
+        st.metric("Total Score", f"{round(cumulative_scores[owner], 1)} pts")
         for entry in history:
-            round_name = {1: "Wild Card", 2: "Divisional", 3: "Conference", 4: "Super Bowl"}.get(entry['week'])
-            with st.expander(f"{round_name} Breakdown"):
-                st.table(pd.DataFrame([{"Slot": s, "Player": r['Player'], "Pts": round(r['pts'], 1)} for s, r in entry['starters']]))
+            label = {1:"Wild Card", 2:"Divisional", 3:"Championship", 4:"Super Bowl"}[entry['week']]
+            with st.expander(f"{label} ({round(entry['pts'], 1)} pts)"):
+                st.dataframe(pd.DataFrame(entry['starters']), hide_index=True)
