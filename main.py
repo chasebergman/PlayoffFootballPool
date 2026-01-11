@@ -19,9 +19,11 @@ ROSTERS = {
     "Ty": ["Matthew Stafford", "Kyren Williams", "Nico Collins", "Stefon Diggs", "Courtland Sutton", "RJ Harvey", "Hunter Henry", "Bo Nix", "Dalton Schultz", "Woody Marks", "Troy Franklin", "Ricky Pearsall", "CJ Stroud", "Jakobi Meyers"]
 }
 
+# Manual Position overrides to ensure QB/RB/WR/TE logic is ironclad
 POS_MAP = {
     "Josh Allen": "QB", "Jalen Hurts": "QB", "Brock Purdy": "QB", "Drake Maye": "QB", "Bo Nix": "QB", 
     "Jordan Love": "QB", "CJ Stroud": "QB", "Matthew Stafford": "QB", "Justin Herbert": "QB",
+    "Trevor Lawrence": "QB", "Sam Darnold": "QB", "Caleb Williams": "QB",
     "Kyle Monangai": "RB", "Josh Jacobs": "RB", "Saquon Barkley": "RB", "Christian McCaffrey": "RB"
 }
 
@@ -72,36 +74,34 @@ for w in range(1, 5):
     
     for owner, roster in ROSTERS.items():
         owner_df = pd.DataFrame({'Player': roster, 'clean': [clean_name(p) for p in roster]})
+        # Merge roster with stats and filter positions
         pool = pd.merge(owner_df, week_stats[['clean', 'pts', 'Pos']], on='clean', how='left').fillna(0)
         pool['Pos'] = pool['Player'].map(POS_MAP).fillna(pool['Pos'])
+        
+        # KEY FIX: Always sort by points BEFORE selecting positions
         pool = pool.sort_values('pts', ascending=False)
         
         starters, used_idx = [], []
 
-        # 1. Mandatory Slots
+        # 1. Mandatory Slots: Picks the highest scoring available player for each
         for pos, count in [('QB', 1), ('RB', 1), ('WR', 2)]:
             matched = pool[(pool['Pos'] == pos) & (~pool.index.isin(used_idx))].head(count)
             for _, row in matched.iterrows():
                 starters.append({"Slot": pos, "Player": row['Player'], "Pts": row['pts']})
                 used_idx.append(row.name)
 
-        # 2. FLEX (No QB)
+        # 2. FLEX (RB/WR/TE ONLY - No QB allowed)
         flex_eligible = pool[(pool['Pos'].isin(['RB', 'WR', 'TE'])) & (~pool.index.isin(used_idx))].head(2)
         for _, row in flex_eligible.iterrows():
             starters.append({"Slot": "FLEX", "Player": row['Player'], "Pts": row['pts']})
             used_idx.append(row.name)
             
-        # 3. BENCH (Everything else)
+        # 3. BENCH
         bench = pool[~pool.index.isin(used_idx)].sort_values('pts', ascending=False)
         
-        week_pts = sum(s['Pts'] for s in starters)
-        cumulative_scores[owner] += week_pts
-        team_history[owner].append({
-            "week": w, 
-            "pts": week_pts, 
-            "starters": starters, 
-            "bench": bench[['Player', 'Pos', 'pts']]
-        })
+        week_total = sum(s['Pts'] for s in starters)
+        cumulative_scores[owner] += week_total
+        team_history[owner].append({"week": w, "pts": week_total, "starters": starters, "bench": bench})
 
 # 5. UI RENDER
 lb_df = pd.DataFrame([{"Owner": k, "Total": round(v, 2)} for k, v in cumulative_scores.items()]).sort_values("Total", ascending=False)
@@ -115,11 +115,11 @@ for i, (owner, history) in enumerate(team_history.items()):
         st.metric("Total Score", f"{round(cumulative_scores[owner], 1)} pts")
         for entry in history:
             label = {1:"Wild Card", 2:"Divisional", 3:"Championship", 4:"Super Bowl"}[entry['week']]
-            with st.expander(f"{label} Details ({round(entry['pts'], 1)} pts)"):
-                col1, col2 = st.columns(2)
-                with col1:
+            with st.expander(f"{label} ({round(entry['pts'], 1)} pts)"):
+                c1, c2 = st.columns(2)
+                with c1:
                     st.write("**✅ Starters**")
                     st.dataframe(pd.DataFrame(entry['starters']), hide_index=True)
-                with col2:
+                with c2:
                     st.write("**🪑 Bench**")
-                    st.dataframe(entry['bench'], hide_index=True)
+                    st.dataframe(entry['bench'][['Player', 'Pos', 'pts']], hide_index=True)
