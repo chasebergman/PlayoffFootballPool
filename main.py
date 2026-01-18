@@ -61,7 +61,16 @@ TEAM_MAP = {
     "CJ Stroud": "HOU", "Jakobi Meyers": "JAX"
 }
 
-ELIMINATED_TEAMS = ['GB', 'SF', 'BUF', 'PIT', 'JAX', 'CAR', 'LAC', 'PHI']
+WILDCARD_ELIMINATED_TEAMS = ['GB', 'PIT', 'JAX', 'CAR', 'LAC', 'PHI']
+DIVISIONAL_ELIMINATED_TEAMS = ['BUF', 'SF']
+ALL_ELIMINATED_TEAMS = WILDCARD_ELIMINATED_TEAMS + DIVISIONAL_ELIMINATED_TEAMS
+
+def get_elimination_tag(team):
+    if team in WILDCARD_ELIMINATED_TEAMS:
+        return f"{team} ❌ᵂᶜ"
+    elif team in DIVISIONAL_ELIMINATED_TEAMS:
+        return f"{team} ❌ᴰⁱᵛ"
+    return team
 
 def clean_name(name):
     return re.sub(r'[^a-z]', '', str(name).lower()) if name else ""
@@ -106,11 +115,9 @@ def get_stats_for_week(year, week):
     return pd.DataFrame(list(player_stats.values()))
 
 # 4. BEST BALL ENGINE
-st.title("🏈 2026 Playoff Pool Tracker")
-st.markdown(f"**Last Sync:** {datetime.now().strftime('%I:%M:%S %p')}")
-
 cumulative_scores = {name: 0 for name in ROSTERS}
 team_history = {name: [] for name in ROSTERS}
+active_players = {name: 0 for name in ROSTERS}
 
 for w in range(1, 5):
     week_stats = get_stats_for_week(TEST_YEAR, w)
@@ -121,7 +128,11 @@ for w in range(1, 5):
         pool = pd.merge(owner_df, week_stats[['clean', 'pts', 'Pos']], on='clean', how='left').fillna(0)
         pool['Pos'] = pool['Player'].map(POS_MAP).fillna(pool['Pos'])
         pool['Team'] = pool['Player'].map(TEAM_MAP).fillna('')
-        pool['Team'] = pool['Team'].apply(lambda t: f"{t} ❌" if t in ELIMINATED_TEAMS else t)
+        pool['Eliminated'] = pool['Team'].isin(ALL_ELIMINATED_TEAMS)
+        pool['Team'] = pool['Team'].apply(get_elimination_tag)
+        
+        # Count active players (not eliminated)
+        active_players[owner] = len(pool[~pool['Eliminated']])
         
         pool = pool.sort_values('pts', ascending=False)
         starters, used_idx = [], []
@@ -148,52 +159,468 @@ for w in range(1, 5):
 
 # 5. UI RENDER
 
-# Custom CSS for centered text in tables
+# Clean, modern CSS with focus on whitespace and hierarchy
 st.markdown("""
 <style>
-    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
-        text-align: center !important;
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    
+    /* Global resets and base */
+    .stApp {
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    [data-testid="stTable"] td, [data-testid="stTable"] th {
+    
+    section[data-testid="stSidebar"] { display: none; }
+    
+    .block-container {
+        padding: 2rem 1rem 4rem 1rem;
+        max-width: 1100px;
+    }
+    
+    @media (min-width: 768px) {
+        .block-container {
+            padding: 3rem 2rem 5rem 2rem;
+        }
+    }
+    
+    /* Header */
+    .site-header {
+        text-align: center;
+        padding: 2.5rem 1rem 3rem 1rem;
+    }
+    
+    @media (min-width: 768px) {
+        .site-header {
+            padding: 3.5rem 2rem 4rem 2rem;
+        }
+    }
+    
+    .site-header .emoji {
+        font-size: 3rem;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    
+    .site-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: forestgreen;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.5px;
+    }
+    
+    @media (min-width: 768px) {
+        .site-header h1 {
+            font-size: 2.75rem;
+        }
+    }
+    
+    .site-header .tagline {
+        color: #71717a;
+        font-size: 0.875rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    
+    .live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        padding: 0.35rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 1rem;
+    }
+    
+    .live-badge .dot {
+        width: 6px;
+        height: 6px;
+        background: #ef4444;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    
+    /* Section headers */
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 1.25rem;
+    }
+    
+    /* Standings rows */
+    .standing-row {
+        margin-bottom: 0.75rem;
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: #18181b;
+        border-radius: 12px;
+        border: 1px solid #27272a;
+        transition: border-color 0.2s ease;
+    }
+    
+    @media (min-width: 768px) {
+        .standing-row {
+            padding: 1.25rem 1.5rem;
+            gap: 1.5rem;
+        }
+    }
+    
+    .standing-row:hover {
+        border-color: #3f3f46;
+    }
+    
+    .standing-row.leader {
+        background: linear-gradient(135deg, #1c1917 0%, #18181b 100%);
+        border-color: #ca8a04;
+    }
+    
+    .rank {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #a1a1aa;
+        width: 28px;
+        text-align: center;
+    }
+    
+    .rank.first { color: #facc15; }
+    .rank.second { color: #d1d5db; }
+    .rank.third { color: #d97706; }
+    
+    .owner-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+    }
+    
+    .owner-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fafafa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    @media (min-width: 768px) {
+        .owner-name {
+            font-size: 1.1rem;
+        }
+    }
+    
+    .owner-meta {
+        font-size: 0.75rem;
+        color: #71717a;
+    }
+    
+    .active-tag {
+        color: #4ade80;
+    }
+    
+    .score-block {
+        text-align: right;
+    }
+    
+    .score-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #fafafa;
+        letter-spacing: -0.5px;
+    }
+    
+    @media (min-width: 768px) {
+        .score-value {
+            font-size: 1.5rem;
+        }
+    }
+    
+    .score-diff {
+        font-size: 0.75rem;
+        color: #71717a;
+        font-weight: 500;
+    }
+    
+    .score-diff.behind { color: #ef4444; }
+    
+    /* Divider */
+    .section-divider {
+        height: 1px;
+        background: #27272a;
+        margin: 2rem 0;
+    }
+    
+    @media (min-width: 768px) {
+        .section-divider {
+            margin: 3rem 0;
+        }
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+        background: #18181b;
+        border-radius: 10px;
+        padding: 0.35rem;
+        border: 1px solid #27272a;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #71717a;
+        background: transparent;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        border: none;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #a1a1aa;
+        background: #27272a;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: #fafafa !important;
+        background: #27272a !important;
+    }
+    
+    .stTabs [data-baseweb="tab-highlight"] {
+        display: none;
+    }
+    
+    .stTabs [data-baseweb="tab-border"] {
+        display: none;
+    }
+    
+    /* Metrics */
+    [data-testid="stMetric"] {
+        background: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    [data-testid="stMetricValue"] {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fafafa;
+    }
+    
+    /* Expanders */
+    [data-testid="stExpander"] {
+        border: 1px solid #27272a !important;
+        border-radius: 10px !important;
+        background: #18181b !important;
+        margin-bottom: 0.75rem;
+    }
+    
+    [data-testid="stExpander"] details {
+        background: #18181b !important;
+    }
+    
+    [data-testid="stExpander"] summary {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #fafafa !important;
+        padding: 1rem 1.25rem;
+        background: #18181b !important;
+    }
+    
+    [data-testid="stExpander"] summary:hover {
+        background: #1f1f23 !important;
+    }
+    
+    [data-testid="stExpander"] summary svg {
+        color: #71717a !important;
+    }
+    
+    [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+        padding: 0 1.25rem 1.25rem 1.25rem;
+        background: #18181b !important;
+    }
+    
+    [data-testid="stExpander"] > div {
+        background: #18181b !important;
+    }
+    
+    /* Table headers */
+    .table-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.75rem;
+        padding-left: 0.25rem;
+    }
+    
+    /* DataFrames */
+    [data-testid="stDataFrame"] {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    [data-testid="stDataFrame"] td, 
+    [data-testid="stDataFrame"] th {
         text-align: center !important;
+        font-family: 'DM Sans', sans-serif !important;
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu, footer, header { visibility: hidden; }
+    
+    /* Custom hr */
+    hr {
+        border: none;
+        border-top: 1px solid #27272a;
+        margin: 1.5rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-lb_df = pd.DataFrame([{"Owner": k, "Total": round(v, 2)} for k, v in cumulative_scores.items()]).sort_values("Total", ascending=False)
-st.subheader("🏆 Leaderboard")
-st.table(lb_df)
+# ============ HEADER ============
+st.markdown(f"""
+<div class="site-header">
+    <span class="emoji">🏈</span>
+    <h1>Playoff Pool 2026</h1>
+    <div class="tagline">Best Ball • PPR Scoring</div>
+    <div class="live-badge">
+        <span class="dot"></span>
+        LIVE · {datetime.now().strftime('%I:%M %p')}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-st.divider()
-tabs = st.tabs(list(ROSTERS.keys()))
-for i, (owner, history) in enumerate(team_history.items()):
+# ============ STANDINGS ============
+sorted_owners = sorted(cumulative_scores.items(), key=lambda x: x[1], reverse=True)
+leader_score = sorted_owners[0][1] if sorted_owners else 0
+
+st.markdown('<p class="section-label">Standings</p>', unsafe_allow_html=True)
+
+for rank, (owner, score) in enumerate(sorted_owners, 1):
+    rank_class = "first" if rank == 1 else "second" if rank == 2 else "third" if rank == 3 else ""
+    row_class = "leader" if rank == 1 else ""
+    rank_display = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else str(rank)
+    
+    gap = score - leader_score
+    if gap == 0:
+        diff_text = "Leader"
+        diff_class = ""
+    else:
+        diff_text = f"{gap:.1f}"
+        diff_class = "behind"
+    
+    active = active_players.get(owner, 0)
+    
+    st.markdown(f"""<div class="standing-row {row_class}">
+        <div class="rank {rank_class}">{rank_display}</div>
+        <div class="owner-info">
+            <div class="owner-name">{owner}</div>
+            <div class="owner-meta"><span class="active-tag">{active} active</span> · 14 rostered</div>
+        </div>
+        <div class="score-block">
+            <div class="score-value">{score:.2f}</div>
+            <div class="score-diff {diff_class}">{diff_text}</div>
+        </div>
+    </div>""", unsafe_allow_html=True)
+
+# ============ TEAM DETAILS ============
+st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+st.markdown('<p class="section-label">Team Rosters</p>', unsafe_allow_html=True)
+
+tabs = st.tabs([owner for owner, _ in sorted_owners])
+
+for i, (owner, _) in enumerate(sorted_owners):
+    history = team_history[owner]
     with tabs[i]:
-        st.metric("Total Score", f"{round(cumulative_scores[owner], 2)} pts")
+        
+        # Compact stats summary
+        weeks_played = len([h for h in history if h['pts'] > 0])
+        eliminated = 14 - active_players[owner]
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 1.5rem; padding: 1rem 1.25rem; background: #18181b; border: 1px solid #27272a; border-radius: 10px; margin: 1rem 0 1.5rem 0; flex-wrap: wrap;">
+            <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+                <span style="font-size: 1.5rem; font-weight: 700; color: #fafafa;">{cumulative_scores[owner]:.2f}</span>
+                <span style="font-size: 0.75rem; color: #71717a; text-transform: uppercase;">pts</span>
+            </div>
+            <div style="width: 1px; height: 24px; background: #27272a;"></div>
+            <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+                <span style="font-size: 1.1rem; font-weight: 600; color: #4ade80;">{active_players[owner]}</span>
+                <span style="font-size: 0.75rem; color: #71717a;">active</span>
+                <span style="font-size: 0.75rem; color: #71717a; margin: 0 0.25rem;">·</span>
+                <span style="font-size: 1.1rem; font-weight: 600; color: #ef4444;">{eliminated}</span>
+                <span style="font-size: 0.75rem; color: #71717a;">eliminated</span>
+            </div>
+            <div style="width: 1px; height: 24px; background: #27272a;"></div>
+            <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+                <span style="font-size: 1.1rem; font-weight: 600; color: #fafafa;">{weeks_played}</span>
+                <span style="font-size: 0.75rem; color: #71717a;">weeks scored</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Week breakdown
         for entry in history:
-            label = {1:"Wild Card", 2:"Divisional", 3:"Championship", 4:"Super Bowl"}[entry['week']]
-            with st.expander(f"{label} ({round(entry['pts'], 2)} pts)"):
+            week_labels = {1: "Wild Card", 2: "Divisional", 3: "Conference", 4: "Super Bowl"}
+            week_icons = {1: "🎴", 2: "⚔️", 3: "👑", 4: "🏆"}
+            
+            is_latest = entry['week'] == max(e['week'] for e in history)
+            label = f"{week_icons[entry['week']]}  {week_labels[entry['week']]}  —  {entry['pts']:.2f} pts"
+            
+            with st.expander(label, expanded=is_latest):
+                st.markdown("<div style='height: 0.5rem'></div>", unsafe_allow_html=True)
+                
                 c1, c2 = st.columns(2)
+                
                 with c1:
-                    st.write("**✅ Starters**")
+                    st.markdown('<p class="table-label">Starting Lineup</p>', unsafe_allow_html=True)
                     st.dataframe(
                         pd.DataFrame(entry['starters']),
                         hide_index=True,
+                        use_container_width=True,
                         column_config={
-                            "Slot": st.column_config.TextColumn("Slot", width="small"),
+                            "Slot": st.column_config.TextColumn("POS", width="small"),
                             "Player": st.column_config.TextColumn("Player", width="medium"),
                             "Team": st.column_config.TextColumn("Team", width="small"),
-                            "Pts": st.column_config.NumberColumn("Pts", width="small", format="%.2f"),
+                            "Pts": st.column_config.NumberColumn("PTS", width="small", format="%.1f"),
                         }
                     )
+                
                 with c2:
-                    st.write("**🪑 Bench**")
+                    st.markdown('<p class="table-label">Bench</p>', unsafe_allow_html=True)
                     st.dataframe(
                         entry['bench'][['Player', 'Team', 'Pos', 'pts']],
                         hide_index=True,
+                        use_container_width=True,
                         column_config={
                             "Player": st.column_config.TextColumn("Player", width="medium"),
                             "Team": st.column_config.TextColumn("Team", width="small"),
-                            "Pos": st.column_config.TextColumn("Pos", width="small"),
-                            "pts": st.column_config.NumberColumn("Pts", width="small", format="%.2f"),
+                            "Pos": st.column_config.TextColumn("POS", width="small"),
+                            "pts": st.column_config.NumberColumn("PTS", width="small", format="%.1f"),
                         }
                     )
+                
+                st.markdown("<div style='height: 0.25rem'></div>", unsafe_allow_html=True)
