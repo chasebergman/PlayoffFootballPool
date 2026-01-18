@@ -9,38 +9,8 @@ from datetime import datetime
 st.set_page_config(page_title="2026 Playoff Pool: LIVE", page_icon="🏈", layout="wide")
 st_autorefresh(interval=60000, key="fpl_refresh")
 
-# 2. CONFIG & ELIMINATED TEAMS (Update this list as rounds end)
+# 2. CONFIG & ROSTERS
 TEST_YEAR = 2025 
-ELIMINATED_TEAMS = ["JAX", "GB", "PHI", "PIT", "LAC", "CAR", "BUF", "SF"]
-
-# 3. ROSTERS & PLAYER DATA (Position, Team)
-PLAYER_DATA = {
-    "Puka Nacua": ("WR", "LAR"), "Josh Jacobs": ("RB", "GB"), "Christian McCaffrey": ("RB", "SF"), 
-    "Brock Purdy": ("QB", "SF"), "George Kittle": ("TE", "SF"), "Trevor Lawrence": ("QB", "JAX"), 
-    "Travis Etienne Jr.": ("RB", "JAX"), "Parker Washington": ("WR", "JAX"), "Brian Thomas Jr.": ("WR", "JAX"), 
-    "Colby Parkinson": ("TE", "LAR"), "Blake Corum": ("RB", "LAR"), "Tetairoa McMillan": ("WR", "ARI"), 
-    "Tyler Higbee": ("TE", "LAR"), "Jaylen Warren": ("RB", "PIT"), "Josh Allen": ("QB", "BUF"), 
-    "A.J. Brown": ("WR", "PHI"), "DeVonta Smith": ("WR", "PHI"), "Dallas Goedert": ("TE", "PHI"), 
-    "Dalton Kincaid": ("TE", "BUF"), "Christian Watson": ("WR", "GB"), "Rhamondre Stevenson": ("RB", "NE"), 
-    "Jayden Reed": ("WR", "GB"), "Kenneth Gainwell": ("RB", "PHI"), "Kenneth Walker III": ("RB", "SEA"), 
-    "DK Metcalf": ("WR", "SEA"), "Jordan Love": ("QB", "GB"), "Kayshon Boutte": ("WR", "NE"), 
-    "Justin Herbert": ("QB", "LAC"), "James Cook": ("RB", "BUF"), "Saquon Barkley": ("RB", "PHI"), 
-    "Jalen Hurts": ("QB", "PHI"), "Khalil Shakir": ("WR", "BUF"), "Caleb Williams": ("QB", "CHI"), 
-    "DJ Moore": ("WR", "CHI"), "Omarion Hampton": ("RB", "CHI"), "Ladd McConkey": ("WR", "LAC"), 
-    "Colston Loveland": ("TE", "DET"), "Dawson Knox": ("TE", "BUF"), "Quentin Johnston": ("WR", "LAC"), 
-    "Brandin Cooks": ("WR", "DAL"), "Jahan Dotson": ("WR", "PHI"), "Ty Johnson": ("RB", "BUF"), 
-    "Jaxon Smith-Njigba": ("WR", "SEA"), "Drake Maye": ("QB", "NE"), "Davante Adams": ("WR", "NYJ"), 
-    "Trayveon Henderson": ("RB", "OSU"), "Rome Odunze": ("WR", "CHI"), "D'Andre Swift": ("RB", "CHI"), 
-    "Sam Darnold": ("QB", "SEA"), "Zach Charbonnet": ("RB", "SEA"), "Luther Burden III": ("WR", "MIZ"), 
-    "Jauan Jennings": ("WR", "SF"), "Cooper Kupp": ("WR", "LAR"), "Jayden Higgins": ("WR", "ISU"), 
-    "Kyle Monangai": ("RB", "RUT"), "Rashid Shaheed": ("WR", "NO"), "Matthew Stafford": ("QB", "LAR"), 
-    "Kyren Williams": ("RB", "LAR"), "Nico Collins": ("WR", "HOU"), "Stefon Diggs": ("WR", "HOU"), 
-    "Courtland Sutton": ("WR", "DEN"), "RJ Harvey": ("RB", "UCF"), "Hunter Henry": ("TE", "NE"), 
-    "Bo Nix": ("QB", "DEN"), "Dalton Schultz": ("TE", "HOU"), "Woody Marks": ("RB", "USC"), 
-    "Troy Franklin": ("WR", "DEN"), "Ricky Pearsall": ("WR", "SF"), "CJ Stroud": ("QB", "HOU"), 
-    "Jakobi Meyers": ("WR", "LV")
-}
-
 ROSTERS = {
     "Chase": ["Puka Nacua", "Josh Jacobs", "Christian McCaffrey", "Brock Purdy", "George Kittle", "Trevor Lawrence", "Travis Etienne Jr.", "Parker Washington", "Brian Thomas Jr.", "Colby Parkinson", "Blake Corum", "Tetairoa McMillan", "Tyler Higbee", "Jaylen Warren"],
     "Dustin": ["Josh Allen", "A.J. Brown", "DeVonta Smith", "Dallas Goedert", "Dalton Kincaid", "Christian Watson", "Rhamondre Stevenson", "Jayden Reed", "Kenneth Gainwell", "Kenneth Walker III", "DK Metcalf", "Jordan Love", "Kayshon Boutte", "Justin Herbert"],
@@ -49,10 +19,31 @@ ROSTERS = {
     "Ty": ["Matthew Stafford", "Kyren Williams", "Nico Collins", "Stefon Diggs", "Courtland Sutton", "RJ Harvey", "Hunter Henry", "Bo Nix", "Dalton Schultz", "Woody Marks", "Troy Franklin", "Ricky Pearsall", "CJ Stroud", "Jakobi Meyers"]
 }
 
+POS_MAP = {
+    "Puka Nacua": "WR", "Josh Jacobs": "RB", "Christian McCaffrey": "RB", "Brock Purdy": "QB", 
+    "George Kittle": "TE", "Trevor Lawrence": "QB", "Travis Etienne Jr.": "RB", "Parker Washington": "WR", 
+    "Brian Thomas Jr.": "WR", "Colby Parkinson": "TE", "Blake Corum": "RB", "Tetairoa McMillan": "WR", 
+    "Tyler Higbee": "TE", "Jaylen Warren": "RB", "Josh Allen": "QB", "A.J. Brown": "WR", 
+    "DeVonta Smith": "WR", "Dallas Goedert": "TE", "Dalton Kincaid": "TE", "Christian Watson": "WR", 
+    "Rhamondre Stevenson": "RB", "Jayden Reed": "WR", "Kenneth Gainwell": "RB", "Kenneth Walker III": "RB", 
+    "DK Metcalf": "WR", "Jordan Love": "QB", "Kayshon Boutte": "WR", "Justin Herbert": "QB",
+    "James Cook": "RB", "Saquon Barkley": "RB", "Jalen Hurts": "QB", "Khalil Shakir": "WR", 
+    "Caleb Williams": "QB", "DJ Moore": "WR", "Omarion Hampton": "RB", "Ladd McConkey": "WR", 
+    "Colston Loveland": "TE", "Dawson Knox": "TE", "Quentin Johnston": "WR", "Brandin Cooks": "WR", 
+    "Jahan Dotson": "WR", "Ty Johnson": "RB", "Jaxon Smith-Njigba": "WR", "Drake Maye": "QB", 
+    "Davante Adams": "WR", "Trayveon Henderson": "RB", "Rome Odunze": "WR", "D'Andre Swift": "RB", 
+    "Sam Darnold": "QB", "Zach Charbonnet": "RB", "Luther Burden III": "WR", "Jauan Jennings": "WR", 
+    "Cooper Kupp": "WR", "Jayden Higgins": "WR", "Kyle Monangai": "RB", "Rashid Shaheed": "WR",
+    "Matthew Stafford": "QB", "Kyren Williams": "RB", "Nico Collins": "WR", "Stefon Diggs": "WR", 
+    "Courtland Sutton": "WR", "RJ Harvey": "RB", "Hunter Henry": "TE", "Bo Nix": "QB", 
+    "Dalton Schultz": "TE", "Woody Marks": "RB", "Troy Franklin": "WR", "Ricky Pearsall": "WR", 
+    "CJ Stroud": "QB", "Jakobi Meyers": "WR"
+}
+
 def clean_name(name):
     return re.sub(r'[^a-z]', '', str(name).lower()) if name else ""
 
-# 4. DATA FETCHING
+# 3. DATA FETCHING
 @st.cache_data(ttl=120) 
 def get_stats_for_week(year, week):
     url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={year}&seasontype=3&week={week}"
@@ -69,63 +60,68 @@ def get_stats_for_week(year, week):
                         p_name = athlete['athlete']['displayName']
                         s = dict(zip(keys, athlete['stats']))
                         if p_name not in player_stats:
-                            player_stats[p_name] = {'Player': p_name, 'pts': 0.0, 'clean': clean_name(p_name)}
+                            p_pos = athlete['athlete'].get('position', {}).get('abbreviation', "WR")
+                            player_stats[p_name] = {'Player': p_name, 'Pos': p_pos, 'pts': 0.0, 'clean': clean_name(p_name)}
                         
+                        # OFFENSIVE SCORING
                         if cat_name == 'passing':
                             player_stats[p_name]['pts'] += (float(s.get('passingYards', 0)) * 0.04) + (float(s.get('passingTouchdowns', 0)) * 4) - (float(s.get('interceptions', 0)) * 2)
                         elif cat_name == 'rushing':
                             player_stats[p_name]['pts'] += (float(s.get('rushingYards', 0)) * 0.1) + (float(s.get('rushingTouchdowns', 0)) * 6)
                         elif cat_name == 'receiving':
                             player_stats[p_name]['pts'] += (float(s.get('receptions', 0)) * 1) + (float(s.get('receivingYards', 0)) * 0.1) + (float(s.get('receivingTouchdowns', 0)) * 6)
-                        # SPECIAL TEAMS ADDITION (The Rashid Shaheed Rule)
-                        elif cat_name in ['kickreturns', 'puntreturns']:
-                            player_stats[p_name]['pts'] += (float(s.get('touchdowns', 0)) * 6)
+                        
+                        # SPECIAL TEAMS SCORING (The Shaheed Rule)
+                        elif 'return' in cat_name:
+                            # ESPN uses different keys for return TDs depending on game type
+                            rt_tds = float(s.get('touchdowns', 0)) + float(s.get('kickReturnTouchdowns', 0)) + float(s.get('puntReturnTouchdowns', 0))
+                            player_stats[p_name]['pts'] += (rt_tds * 6)
 
                         if 'fumblesLost' in s:
                             player_stats[p_name]['pts'] -= (float(s.get('fumblesLost', 0)) * 2)
     except: pass
     return pd.DataFrame(list(player_stats.values()))
 
-# 5. ENGINE
+# 4. BEST BALL ENGINE
 st.title("🏈 2026 Playoff Pool Tracker")
-st.markdown(f"**Round:** Divisional | **Last Sync:** {datetime.now().strftime('%I:%M:%S %p')}")
+st.markdown(f"**Last Sync:** {datetime.now().strftime('%I:%M:%S %p')}")
 
 cumulative_scores = {name: 0 for name in ROSTERS}
 team_history = {name: [] for name in ROSTERS}
 
 for w in range(1, 5):
     week_stats = get_stats_for_week(TEST_YEAR, w)
-    if week_stats is None or week_stats.empty: continue
+    if week_stats.empty: continue
     
     for owner, roster in ROSTERS.items():
         owner_df = pd.DataFrame({'Player': roster, 'clean': [clean_name(p) for p in roster]})
-        pool = pd.merge(owner_df, week_stats[['clean', 'pts']], on='clean', how='left').fillna(0)
-        
-        # Mapping Positions, Teams, and Elimination Status
-        pool['Pos'] = pool['Player'].apply(lambda x: PLAYER_DATA.get(x, ("WR", "N/A"))[0])
-        pool['Team'] = pool['Player'].apply(lambda x: PLAYER_DATA.get(x, ("WR", "N/A"))[1])
-        pool['Status'] = pool['Team'].apply(lambda x: "❌" if x in ELIMINATED_TEAMS else "✅")
+        pool = pd.merge(owner_df, week_stats[['clean', 'pts', 'Pos']], on='clean', how='left').fillna(0)
+        pool['Pos'] = pool['Player'].map(POS_MAP).fillna(pool['Pos'])
         
         pool = pool.sort_values('pts', ascending=False)
         starters, used_idx = [], []
 
+        # 1. Mandatory Slots
         for pos, count in [('QB', 1), ('RB', 1), ('WR', 2)]:
             matched = pool[(pool['Pos'] == pos) & (~pool.index.isin(used_idx))].head(count)
             for _, row in matched.iterrows():
-                starters.append({"Slot": pos, "Status": row['Status'], "Player": row['Player'], "Team": row['Team'], "Pts": row['pts']})
+                starters.append({"Slot": pos, "Player": row['Player'], "Pts": round(row['pts'], 2)})
                 used_idx.append(row.name)
 
+        # 2. FLEX (RB/WR/TE)
         flex_eligible = pool[(pool['Pos'].isin(['RB', 'WR', 'TE'])) & (~pool.index.isin(used_idx))].head(2)
         for _, row in flex_eligible.iterrows():
-            starters.append({"Slot": "FLEX", "Status": row['Status'], "Player": row['Player'], "Team": row['Team'], "Pts": row['pts']})
+            starters.append({"Slot": "FLEX", "Player": row['Player'], "Pts": round(row['pts'], 2)})
             used_idx.append(row.name)
             
-        bench = pool[~pool.index.isin(used_idx)].sort_values('pts', ascending=False)
+        bench = pool[~pool.index.isin(used_idx)].sort_values('pts', ascending=False).copy()
+        bench['pts'] = bench['pts'].round(2)
+        
         week_total = sum(s['Pts'] for s in starters)
         cumulative_scores[owner] += week_total
         team_history[owner].append({"week": w, "pts": week_total, "starters": starters, "bench": bench})
 
-# 6. UI RENDER
+# 5. UI RENDER
 lb_df = pd.DataFrame([{"Owner": k, "Total": round(v, 2)} for k, v in cumulative_scores.items()]).sort_values("Total", ascending=False)
 st.subheader("🏆 Leaderboard")
 st.table(lb_df)
@@ -144,4 +140,4 @@ for i, (owner, history) in enumerate(team_history.items()):
                     st.dataframe(pd.DataFrame(entry['starters']), hide_index=True)
                 with c2:
                     st.write("**🪑 Bench**")
-                    st.dataframe(entry['bench'][['Status', 'Player', 'Team', 'Pos', 'pts']], hide_index=True)
+                    st.dataframe(entry['bench'][['Player', 'Pos', 'pts']], hide_index=True)
