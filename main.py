@@ -68,11 +68,11 @@ ALL_ELIMINATED_TEAMS = WILDCARD_ELIMINATED_TEAMS + DIVISIONAL_ELIMINATED_TEAMS +
 
 def get_elimination_tag(team):
     if team in WILDCARD_ELIMINATED_TEAMS:
-        return f"{team} ❌ᵂᶜ"
+        return f"{team} ❌WC"
     elif team in DIVISIONAL_ELIMINATED_TEAMS:
-        return f"{team} ❌ᴰⁱᵛ"
+        return f"{team} ❌DIV"
     elif team in CONFERENCE_ELIMINATED_TEAMS:
-        return f"{team} ❌ᴄᴏɴ"
+        return f"{team} ❌CON"
     return team
 
 def clean_name(name):
