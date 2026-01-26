@@ -63,13 +63,16 @@ TEAM_MAP = {
 
 WILDCARD_ELIMINATED_TEAMS = ['GB', 'PIT', 'JAX', 'CAR', 'LAC', 'PHI']
 DIVISIONAL_ELIMINATED_TEAMS = ['BUF', 'SF', 'HOU', 'CHI']
-ALL_ELIMINATED_TEAMS = WILDCARD_ELIMINATED_TEAMS + DIVISIONAL_ELIMINATED_TEAMS
+CONFERENCE_ELIMINATED_TEAMS = ['LAR', 'DEN']
+ALL_ELIMINATED_TEAMS = WILDCARD_ELIMINATED_TEAMS + DIVISIONAL_ELIMINATED_TEAMS + CONFERENCE_ELIMINATED_TEAMS
 
 def get_elimination_tag(team):
     if team in WILDCARD_ELIMINATED_TEAMS:
         return f"{team} ❌ᵂᶜ"
     elif team in DIVISIONAL_ELIMINATED_TEAMS:
         return f"{team} ❌ᴰⁱᵛ"
+    elif team in CONFERENCE_ELIMINATED_TEAMS:
+        return f"{team} ❌ᴄᴏɴ"
     return team
 
 def clean_name(name):
