@@ -72,7 +72,7 @@ def get_elimination_tag(team):
     elif team in DIVISIONAL_ELIMINATED_TEAMS:
         return f"{team} ❌DIV"
     elif team in CONFERENCE_ELIMINATED_TEAMS:
-        return f"{team} ❌CON"
+        return f"{team} ❌ᴄᴏɴ"
     return team
 
 def clean_name(name):
@@ -122,7 +122,7 @@ cumulative_scores = {name: 0 for name in ROSTERS}
 team_history = {name: [] for name in ROSTERS}
 active_players = {name: 0 for name in ROSTERS}
 
-for w in range(1, 5):
+for w in [1, 2, 3, 5]:  # Skip week 4 (Pro Bowl), Super Bowl is week 5
     week_stats = get_stats_for_week(TEST_YEAR, w)
     if week_stats.empty: continue
     
@@ -587,8 +587,8 @@ for i, (owner, _) in enumerate(sorted_owners):
         
         # Week breakdown
         for entry in history:
-            week_labels = {1: "Wild Card", 2: "Divisional", 3: "Conference", 4: "Super Bowl"}
-            week_icons = {1: "🎴", 2: "⚔️", 3: "👑", 4: "🏆"}
+            week_labels = {1: "Wild Card", 2: "Divisional", 3: "Conference", 5: "Super Bowl"}
+            week_icons = {1: "🎴", 2: "⚔️", 3: "👑", 5: "🏆"}
             
             is_latest = entry['week'] == max(e['week'] for e in history)
             label = f"{week_icons[entry['week']]}  {week_labels[entry['week']]}  —  {entry['pts']:.2f} pts"
